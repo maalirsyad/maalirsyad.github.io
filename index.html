@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Absensi Karyawan</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f9f9f9;
+      padding: 20px;
+      margin: 0;
+      color: #333;
+    }
+
+    .logo-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      max-width: 150px;
+      height: auto;
+    }
+
+    .nama-sekolah {
+      font-size: 20px;
+      font-weight: bold;
+      color: #2c3e50;
+      margin-top: 8px;
+    }
+
+    h2, h3 {
+      color: #2c3e50;
+    }
+
+    form {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+      max-width: 600px;
+      margin-bottom: 30px;
+      margin: auto;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    input:focus, select:focus {
+      border-color: #3498db;
+      outline: none;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 20px;
+    }
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th {
+      background-color: #ecf0f1;
+      font-weight: 600;
+    }
+
+    @media (max-width: 768px) {
+      form, table {
+        width: 100%;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <img src="logo.png" alt="Logo MA Terpadu Al Irsyad" class="logo">
+    <div class="nama-sekolah">MA Terpadu Al Irsyad</div>
+  </div>
+
+  <h2 style="text-align:center;">Form Absensi Karyawan</h2>
+  <form id="absensiForm">
+    <div class="form-group">
+      <label for="nama">Nama Karyawan:</label>
+      <input type="text" id="nama" required>
+    </div>
+
+    <div class="form-group">
+      <label for="tanggal">Tanggal:</label>
+      <input type="date" id="tanggal" required>
+    </div>
+
+    <div class="form-group">
+      <label for="status">Status Kehadiran:</label>
+      <select id="status" onchange="toggleFields()" required>
+        <option value="">-- Pilih --</option>
+        <option value="Hadir">Hadir</option>
+        <option value="Alfa">Alfa</option>
+        <option value="Izin">Izin</option>
+        <option value="Sakit">Sakit</option>
+      </select>
+    </div>
+
+    <div id="izinField" style="display:none;">
+      <div class="form-group">
+        <label for="keterangan">Keterangan Izin:</label>
+        <input type="text" id="keterangan">
+      </div>
+    </div>
+
+    <button type="submit">Simpan Absensi</button>
+    <button type="button" onclick="hapusData()">Hapus Semua Data</button>
+    <button type="button" onclick="eksporExcel()">Ekspor ke Excel</button>
+  </form>
+
+  <h3>Rekap Absensi</h3>
+  <table id="rekapTable">
+    <thead>
+      <tr>
+        <th>Nama</th>
+        <th>Tanggal</th>
+        <th>Status</th>
+        <th>Jam Masuk</th>
+        <th>Jam Pulang</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    function toggleFields() {
+      const status = document.getElementById("status").value;
+      document.getElementById("izinField").style.display = status === "Izin" ? "block" : "none";
+    }
+
+    function getCurrentTime() {
+      const now = new Date();
+      return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function simpanAbsensi(event) {
+      event.preventDefault();
+
+      const nama = document.getElementById("nama").value.trim();
+      const tanggal = document.getElementById("tanggal").value;
+      const status = document.getElementById("status").value;
+      const keterangan = status === "Izin" ? document.getElementById("keterangan").value.trim() : "-";
+      const waktuSekarang = getCurrentTime();
+
+      if (status === "Izin" && keterangan === "") {
+        alert("Mohon isi keterangan untuk izin.");
+        return;
+      }
+
+      let absensi = JSON.parse(localStorage.getItem("absensi")) || [];
+      let index = absensi.findIndex(entry => entry.nama === nama && entry.tanggal === tanggal);
+
+      if (status === "Hadir") {
+        if (index !== -1 && absensi[index].status === "Hadir") {
+          absensi[index].pulang = waktuSekarang;
+        } else {
+          absensi.push({
+            nama, tanggal, status,
+            masuk: waktuSekarang,
+            pulang: "-",
+            keterangan: "-"
+          });
+        }
+      } else {
+        absensi.push({
+          nama, tanggal, status,
+          masuk: "-",
+          pulang: "-",
+          keterangan
+        });
+      }
+
+      localStorage.setItem("absensi", JSON.stringify(absensi));
+      tampilkanRekap();
+      document.getElementById("absensiForm").reset();
+      toggleFields();
+    }
+
+    function tampilkanRekap() {
+      const tableBody = document.querySelector("#rekapTable tbody");
+      tableBody.innerHTML = "";
+      const absensi = JSON.parse(localStorage.getItem("absensi")) || [];
+
+      absensi.forEach(item => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item.nama}</td>
+          <td>${item.tanggal}</td>
+          <td>${item.status}</td>
+          <td>${item.masuk}</td>
+          <td>${item.pulang}</td>
+          <td>${item.keterangan}</td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    function hapusData() {
+      if (confirm("Yakin ingin menghapus semua data absensi?")) {
+        localStorage.removeItem("absensi");
+        tampilkanRekap();
+      }
+    }
+
+    function eksporExcel() {
+      const absensi = JSON.parse(localStorage.getItem("absensi")) || [];
+      if (absensi.length === 0) {
+        alert("Data kosong.");
+        return;
+      }
+
+      let table = `
+        <table>
+          <tr>
+            <th>Nama</th>
+            <th>Tanggal</th>
+            <th>Status</th>
+            <th>Jam Masuk</th>
+            <th>Jam Pulang</th>
+            <th>Keterangan</th>
+          </tr>`;
+
+      absensi.forEach(item => {
+        table += `
+          <tr>
+            <td>${item.nama}</td>
+            <td>${item.tanggal}</td>
+            <td>${item.status}</td>
+            <td>${item.masuk}</td>
+            <td>${item.pulang}</td>
+            <td>${item.keterangan}</td>
+          </tr>`;
+      });
+
+      table += "</table>";
+
+      const blob = new Blob([table], { type: "application/vnd.ms-excel" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Rekap_Absensi.xls";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    document.getElementById("absensiForm").addEventListener("submit", simpanAbsensi);
+    window.onload = tampilkanRekap;
+  </script>
+</body>
+</html>
